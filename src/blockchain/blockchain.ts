@@ -1,77 +1,107 @@
 import { Block } from './block'
 import chainparams from './chainparams'
 import { genesisBlock } from './genesisBlock'
+import BlockSchema from '../database/schemas/Block'
 
 class Blockchain {
-  private chain: Block[]
   public difficultyAdjustment: number
   public blockInterval: number
 
   constructor(genesisBlock: Block) {
-    this.chain = []
-    this.chain.push(genesisBlock)
     this.difficultyAdjustment = chainparams.DIFFICULTY_ADJUSTMENT
     this.blockInterval = chainparams.BLOCK_INTERVAL
+
+    this.addGenesisToDatabase(genesisBlock)
   }
 
-  get getChain() {
-    return this.chain
+  async getChain() {
+    const plainChain = await BlockSchema.find()
+    const chain = plainChain.map(
+      block =>
+        new Block(
+          block.index,
+          block.timestamp,
+          block.data,
+          block.previousHash,
+          block.difficulty,
+          block.nonce,
+          block.hash
+        )
+    )
+
+    return chain
   }
 
-  getLatestBlock() {
-    return this.chain[this.chain.length - 1]
+  async getLatestBlock() {
+    const plainBlock = await BlockSchema.findOne().sort('-index')
+    const latestBlock = new Block(
+      plainBlock.index,
+      plainBlock.timestamp,
+      plainBlock.data,
+      plainBlock.previousHash,
+      plainBlock.difficulty,
+      plainBlock.nonce,
+      plainBlock.hash
+    )
+
+    return latestBlock
   }
 
-  generateNextBlock(data: any) {
-    const previousBlock = this.getLatestBlock()
+  async generateNextBlock(data: any) {
+    const previousBlock = await this.getLatestBlock()
+    const nextIndex = previousBlock.index + 1
     const nextTimestamp = new Date().getTime()
     const nextPreviousHash = previousBlock.hash
     const newBlock = new Block(
+      nextIndex,
       nextTimestamp,
       data,
       nextPreviousHash,
-      this.getDifficulty(),
-      0
+      await this.getDifficulty(),
+      0,
+      ''
     )
 
     newBlock.mineBlock()
 
     if (this.isBlockValid(newBlock)) {
-      this.chain.push(newBlock)
+      await BlockSchema.create(newBlock)
     }
   }
 
-  isBlockValid(newBlock: Block) {
-    const previousBlock = this.getLatestBlock()
+  async isBlockValid(newBlock: Block) {
+    const previousBlock = await this.getLatestBlock()
+    if (newBlock.index != previousBlock.index + 1) return false
     if (previousBlock.hash != newBlock.previousHash) return false
     else if (!newBlock.hashMatchesDifficulty()) return false
 
     return true
   }
 
-  isChainValid() {
+  async isChainValid() {
+    const chain = await this.getChain()
+
     const realGenesis = JSON.stringify(genesisBlock)
 
-    if (realGenesis !== JSON.stringify(this.chain[0])) return false
+    if (realGenesis !== JSON.stringify(chain[0])) return false
 
-    for (let i = 1; i < this.chain.length; i++) {
-      const currentBlock = this.chain[i]
+    for (let i = 1; i < chain.length; i++) {
+      const previousBlock = chain[i - 1]
+      const currentBlock = chain[i]
 
+      if (currentBlock.index != previousBlock.index + 1) return false
       if (currentBlock.hash !== currentBlock.calculateHash()) return false
     }
 
     return true
   }
 
-  getDifficulty() {
-    const latestBlock = this.getLatestBlock()
-    const latestBlockIndex = this.chain.findIndex(
-      block => block.timestamp === latestBlock.timestamp
-    )
+  async getDifficulty() {
+    const latestBlock = await this.getLatestBlock()
 
     if (
-      latestBlockIndex % this.difficultyAdjustment === 0 &&
-      latestBlockIndex !== 0
+      latestBlock.index % this.difficultyAdjustment === 0 &&
+      latestBlock.index !== 0
     ) {
       return this.getAdjustedDifficulty()
     } else {
@@ -79,11 +109,11 @@ class Blockchain {
     }
   }
 
-  getAdjustedDifficulty() {
-    const latestBlock = this.getLatestBlock()
-    const prevAdjustmentBlock = this.chain[
-      this.chain.length - this.difficultyAdjustment
-    ]
+  async getAdjustedDifficulty() {
+    const latestBlock = await this.getLatestBlock()
+    const prevAdjustmentBlock = await BlockSchema.findOne({
+      index: latestBlock.index - this.difficultyAdjustment,
+    })
     const timeExpected = this.blockInterval * this.difficultyAdjustment
     const timeTaken =
       (latestBlock.timestamp - prevAdjustmentBlock.timestamp) / 1000
@@ -94,6 +124,14 @@ class Blockchain {
       return prevAdjustmentBlock.difficulty - 1
     } else {
       return prevAdjustmentBlock.difficulty
+    }
+  }
+
+  async addGenesisToDatabase(genesisBlock: Block) {
+    const chainLength = await BlockSchema.estimatedDocumentCount()
+
+    if (chainLength === 0) {
+      BlockSchema.create(genesisBlock)
     }
   }
 }
