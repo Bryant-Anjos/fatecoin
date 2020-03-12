@@ -1,9 +1,13 @@
+import 'dotenv/config'
+
 import express, { Express, Response, NextFunction } from 'express'
 import io, { Server } from 'socket.io'
 import http from 'http'
 
 import routes from './routes'
 import { connectedPeer, Req } from './interfaces/api'
+
+import './database'
 
 class App {
   public server: http.Server
