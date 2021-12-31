@@ -1,11 +1,10 @@
 import 'dotenv/config'
 
-import express, { Express, Response, NextFunction } from 'express'
+import express, { Express } from 'express'
 import io, { Server } from 'socket.io'
 import http from 'http'
 
 import routes from './routes'
-import { connectedPeer, Req } from './interfaces/api'
 
 import './database'
 
@@ -13,7 +12,7 @@ class App {
   public server: http.Server
   private app: Express
   private io: Server
-  private connectedPeers: connectedPeer[]
+  private connectedPeers: Express.ConnectedPeer
 
   constructor() {
     this.app = express()
@@ -39,7 +38,7 @@ class App {
   middlewares() {
     this.app.use(express.json())
 
-    this.app.use((req: Req, res: Response, next: NextFunction) => {
+    this.app.use((req, res, next) => {
       req.io = this.io
       req.connectedPeers = this.connectedPeers
 
