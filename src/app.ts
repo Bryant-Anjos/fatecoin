@@ -11,8 +11,8 @@ import './database'
 class App {
   public server: http.Server
   private app: Express
-  private io: Server
-  private connectedPeers: Express.ConnectedPeer
+  private io?: Server
+  private connectedPeers: Express.ConnectedPeer = {}
 
   constructor() {
     this.app = express()
@@ -39,6 +39,10 @@ class App {
     this.app.use(express.json())
 
     this.app.use((req, res, next) => {
+      if (!this.io) {
+        throw new Error('io needs to be initialized first')
+      }
+
       req.io = this.io
       req.connectedPeers = this.connectedPeers
 

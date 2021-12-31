@@ -34,6 +34,11 @@ class Blockchain {
 
   async getLatestBlock() {
     const plainBlock = await BlockSchema.findOne().sort('-index')
+
+    if (!plainBlock) {
+      throw new Error('Block not found!')
+    }
+
     const latestBlock = new Block(
       plainBlock.index,
       plainBlock.timestamp,
@@ -64,7 +69,7 @@ class Blockchain {
 
     newBlock.mineBlock()
 
-    if (this.isBlockValid(newBlock)) {
+    if (await this.isBlockValid(newBlock)) {
       await BlockSchema.create(newBlock)
     }
   }
