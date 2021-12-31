@@ -1,31 +1,15 @@
 import crypto from 'crypto'
 
 export class Block {
-  public index: number
-  public timestamp: number
-  public data: any
-  public previousHash: string
-  public difficulty: number
-  public nonce: number
-  public hash: string
-
   constructor(
-    index: number,
-    timestamp: number,
-    data: any,
-    previousHash: string,
-    difficulty: number,
-    nonce: number,
-    hash: string
-  ) {
-    this.index = index
-    this.timestamp = timestamp
-    this.data = data
-    this.previousHash = previousHash
-    this.difficulty = difficulty
-    this.nonce = nonce
-    this.hash = hash
-  }
+    public index: number,
+    public timestamp: number,
+    public data: any,
+    public previousHash: string,
+    public difficulty: number,
+    public nonce: number,
+    public hash: string
+  ) {}
 
   calculateHash() {
     return crypto

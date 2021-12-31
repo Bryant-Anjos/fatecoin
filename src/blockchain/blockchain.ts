@@ -1,7 +1,7 @@
 import { Block } from './block'
 import chainparams from './chainparams'
 import { genesisBlock } from './genesisBlock'
-import BlockSchema from '../database/schemas/Block'
+import database from '../database'
 
 class Blockchain {
   public difficultyAdjustment: number
@@ -15,39 +15,16 @@ class Blockchain {
   }
 
   async getChain() {
-    const plainChain = await BlockSchema.find()
-    const chain = plainChain.map(
-      block =>
-        new Block(
-          block.index,
-          block.timestamp,
-          block.data,
-          block.previousHash,
-          block.difficulty,
-          block.nonce,
-          block.hash
-        )
-    )
-
-    return chain
+    const blocks = await database.block.find()
+    return blocks
   }
 
   async getLatestBlock() {
-    const plainBlock = await BlockSchema.findOne().sort('-index')
+    const latestBlock = await database.block.getLatest()
 
-    if (!plainBlock) {
+    if (!latestBlock) {
       throw new Error('Block not found!')
     }
-
-    const latestBlock = new Block(
-      plainBlock.index,
-      plainBlock.timestamp,
-      plainBlock.data,
-      plainBlock.previousHash,
-      plainBlock.difficulty,
-      plainBlock.nonce,
-      plainBlock.hash
-    )
 
     return latestBlock
   }
@@ -70,7 +47,7 @@ class Blockchain {
     newBlock.mineBlock()
 
     if (await this.isBlockValid(newBlock)) {
-      await BlockSchema.create(newBlock)
+      await database.block.create(newBlock)
     }
   }
 
@@ -116,9 +93,14 @@ class Blockchain {
 
   async getAdjustedDifficulty() {
     const latestBlock = await this.getLatestBlock()
-    const prevAdjustmentBlock = await BlockSchema.findOne({
-      index: latestBlock.index - this.difficultyAdjustment,
-    })
+    const prevAdjustmentBlock = await database.block.findByIndex(
+      latestBlock.index - this.difficultyAdjustment
+    )
+
+    if (!prevAdjustmentBlock) {
+      return latestBlock.difficulty
+    }
+
     const timeExpected = this.blockInterval * this.difficultyAdjustment
     const timeTaken =
       (latestBlock.timestamp - prevAdjustmentBlock.timestamp) / 1000
@@ -133,10 +115,10 @@ class Blockchain {
   }
 
   async addGenesisToDatabase(genesisBlock: Block) {
-    const chainLength = await BlockSchema.estimatedDocumentCount()
+    const chainLength = await database.block.count()
 
     if (chainLength === 0) {
-      BlockSchema.create(genesisBlock)
+      await database.block.create(genesisBlock)
     }
   }
 }

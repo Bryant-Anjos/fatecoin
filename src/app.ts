@@ -6,7 +6,7 @@ import http from 'http'
 
 import routes from './routes'
 
-import './database'
+import database from './database'
 
 class App {
   public server: http.Server
@@ -15,6 +15,8 @@ class App {
   private connectedPeers: Express.ConnectedPeer = {}
 
   constructor() {
+    database.init(process.env.MONGO_URL)
+
     this.app = express()
     this.server = new http.Server(this.app)
 

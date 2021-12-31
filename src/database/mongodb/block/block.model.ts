@@ -1,8 +1,8 @@
 import mongoose from 'mongoose'
 
-import { BlockDTO } from '../../interfaces/block'
+import { IBlock } from './block.inteface'
 
-const BlockSchema = new mongoose.Schema({
+const BlockSchema = new mongoose.Schema<IBlock>({
   index: {
     type: Number,
     required: true,
@@ -17,7 +17,7 @@ const BlockSchema = new mongoose.Schema({
   },
   previousHash: {
     type: String,
-    required: false,
+    required: true,
   },
   difficulty: {
     type: Number,
@@ -33,4 +33,4 @@ const BlockSchema = new mongoose.Schema({
   },
 })
 
-export default mongoose.model<BlockDTO>('Block', BlockSchema)
+export default mongoose.model<IBlock>('Block', BlockSchema)
